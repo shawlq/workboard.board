@@ -1,0 +1,38 @@
+{
+  "host": "0.0.0.0",
+  "port": 12000,
+  "apps": [
+    {
+      "id": "notes_browser",
+      "name": "Notes",
+      "icon": "notes",
+      "port": 8766,
+      "cwd": "../notes_browser",
+      "service_script": "./service.sh",
+      "health_path": "/"
+    },
+    {
+      "id": "transfer_hub",
+      "name": "TransHub",
+      "icon": "transhub",
+      "port": 8765,
+      "cwd": "../transfer_hub",
+      "service_script": "./service.sh",
+      "health_path": "/"
+    },
+    {
+      "id": "webui",
+      "name": "LocalWebui",
+      "icon": "webui",
+      "port": 13000,
+      "cwd": "../webui",
+      "service_script": "./service.sh",
+      "health_path": "/"
+    }
+  ],
+  "order": [
+    "notes_browser",
+    "transfer_hub",
+    "webui"
+  ]
+}

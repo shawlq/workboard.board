@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.service.pid
+service.log
+.DS_Store
