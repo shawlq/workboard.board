@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Work Board">
+  <rect x="6.4" y="6.4" width="51.2" height="51.2" rx="9" fill="#2563EB"/>
+  <!-- 4 status dots: TL light-blue, TR teal, BL amber, BR white -->
+  <circle cx="24.5" cy="24.5" r="7" fill="#BFDBFE"/>
+  <circle cx="39.5" cy="24.5" r="7" fill="#34D399"/>
+  <circle cx="24.5" cy="39.5" r="7" fill="#FBBF24"/>
+  <circle cx="39.5" cy="39.5" r="7" fill="#FFFFFF"/>
+  <!-- subtle check on teal -->
+  <path d="M36.2 24.5l2.2 2.2 4-4.2" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

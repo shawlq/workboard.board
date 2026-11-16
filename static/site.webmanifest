@@ -1,0 +1,23 @@
+{
+  "name": "Work Board",
+  "short_name": "Board",
+  "description": "子应用工作面板",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e151c",
+  "theme_color": "#0e151c",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
