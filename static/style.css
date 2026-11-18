@@ -165,9 +165,14 @@ body {
   transition: background 0.2s, transform 0.15s, border-color 0.2s;
 }
 
-.app-tile:hover {
+.app-tile:hover,
+.app-tile.menu-open {
   background: rgba(28, 43, 54, 0.55);
   border-color: var(--line);
+}
+
+.app-tile.menu-open {
+  border-color: var(--accent-dim);
 }
 
 .app-tile:active {
@@ -224,6 +229,43 @@ body {
   font-weight: 600;
   text-align: center;
   letter-spacing: -0.01em;
+}
+
+/* App dropdown (anchored below tile) */
+.app-dropdown {
+  position: fixed;
+  z-index: 50;
+  min-width: 140px;
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: linear-gradient(165deg, #1a2833, #121c24);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: dropIn 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.app-dropdown[hidden] {
+  display: none;
+}
+
+.app-dropdown .action {
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.app-dropdown.busy .action {
+  pointer-events: none;
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Modals */
@@ -289,42 +331,16 @@ body {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.modal-head {
-  display: flex;
-  gap: 0.85rem;
-  align-items: center;
-  margin-bottom: 1.1rem;
-  padding-right: 1.5rem;
-}
-
-.modal-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-}
-
 .modal h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.15rem;
 }
 
-.modal-sub {
-  margin: 0.2rem 0 0;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
 .modal-hint {
   margin: 0 0 1rem;
   color: var(--muted);
   font-size: 0.88rem;
-}
-
-.menu-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
 }
 
 .action {
@@ -427,8 +443,4 @@ body {
   margin-top: 1rem;
   display: flex;
   justify-content: flex-end;
-}
-
-.busy .action {
-  pointer-events: none;
 }

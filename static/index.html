@@ -36,24 +36,12 @@
     <div class="app-grid" id="app-grid" role="list"></div>
   </main>
 
-  <!-- App action menu -->
-  <div class="modal-backdrop" id="menu-modal" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-      <button type="button" class="modal-close" data-close="menu-modal" aria-label="关闭">×</button>
-      <div class="modal-head">
-        <img class="modal-icon" id="menu-icon" alt="" />
-        <div>
-          <h2 id="menu-title">App</h2>
-          <p class="modal-sub" id="menu-sub"></p>
-        </div>
-      </div>
-      <div class="menu-actions">
-        <button type="button" class="action" id="act-open">打开</button>
-        <button type="button" class="action" id="act-start">启动</button>
-        <button type="button" class="action" id="act-stop">停止</button>
-        <button type="button" class="action" id="act-status">状态</button>
-      </div>
-    </div>
+  <!-- App action dropdown (anchored below tile) -->
+  <div class="app-dropdown" id="app-dropdown" hidden role="menu">
+    <button type="button" class="action" id="act-open" role="menuitem">打开</button>
+    <button type="button" class="action" id="act-start" role="menuitem">启动</button>
+    <button type="button" class="action" id="act-stop" role="menuitem">停止</button>
+    <button type="button" class="action" id="act-status" role="menuitem">状态</button>
   </div>
 
   <!-- Status detail -->

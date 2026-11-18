@@ -1,14 +1,17 @@
 (() => {
   const grid = document.getElementById("app-grid");
-  const menuModal = document.getElementById("menu-modal");
+  const dropdown = document.getElementById("app-dropdown");
   const statusModal = document.getElementById("status-modal");
   const settingsModal = document.getElementById("settings-modal");
   const orderList = document.getElementById("order-list");
 
   let apps = [];
   let selected = null;
+  let dropdownOpen = false;
   let draftOrder = [];
   let busy = false;
+  let statusAppId = null;
+  let statusPollTimer = null;
 
   const iconUrl = (icon) => `/static/icons/${icon}.svg`;
 
@@ -43,6 +46,9 @@
       btn.className = "app-tile";
       btn.setAttribute("role", "listitem");
       btn.dataset.id = app.id;
+      if (dropdownOpen && selected && selected.id === app.id) {
+        btn.classList.add("menu-open");
+      }
       btn.innerHTML = `
         <span class="icon-wrap">
           <img src="${iconUrl(app.icon)}" alt="" />
@@ -50,7 +56,10 @@
         </span>
         <span class="app-name">${escapeHtml(app.name)}</span>
       `;
-      btn.addEventListener("click", () => openMenu(app.id));
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleDropdown(btn, app.id);
+      });
       grid.appendChild(btn);
     }
   }
@@ -67,6 +76,67 @@
     return escapeHtml(s).replace(/'/g, "&#39;");
   }
 
+  function tileFor(id) {
+    return grid.querySelector(`.app-tile[data-id="${CSS.escape(id)}"]`);
+  }
+
+  function positionDropdown(tile) {
+    const rect = tile.getBoundingClientRect();
+    dropdown.hidden = false;
+    const ddRect = dropdown.getBoundingClientRect();
+    const gap = 6;
+    let left = rect.left + (rect.width - ddRect.width) / 2;
+    let top = rect.bottom + gap;
+    const pad = 8;
+    left = Math.max(pad, Math.min(left, window.innerWidth - ddRect.width - pad));
+    if (top + ddRect.height > window.innerHeight - pad) {
+      top = Math.max(pad, rect.top - ddRect.height - gap);
+    }
+    dropdown.style.left = `${Math.round(left)}px`;
+    dropdown.style.top = `${Math.round(top)}px`;
+  }
+
+  function hideDropdown() {
+    if (!dropdownOpen) return;
+    dropdownOpen = false;
+    dropdown.hidden = true;
+    grid.querySelectorAll(".app-tile.menu-open").forEach((el) => {
+      el.classList.remove("menu-open");
+    });
+  }
+
+  function showDropdown(tile, id) {
+    const app = apps.find((a) => a.id === id);
+    if (!app || !tile) return;
+    selected = app;
+    dropdownOpen = true;
+    grid.querySelectorAll(".app-tile.menu-open").forEach((el) => {
+      el.classList.remove("menu-open");
+    });
+    tile.classList.add("menu-open");
+    syncMenuButtons();
+    positionDropdown(tile);
+  }
+
+  function toggleDropdown(tile, id) {
+    if (dropdownOpen && selected && selected.id === id) {
+      hideDropdown();
+      return;
+    }
+    showDropdown(tile, id);
+  }
+
+  function reanchorDropdown() {
+    if (!dropdownOpen || !selected) return;
+    const tile = tileFor(selected.id);
+    if (!tile) {
+      hideDropdown();
+      return;
+    }
+    tile.classList.add("menu-open");
+    positionDropdown(tile);
+  }
+
   async function refresh() {
     const data = await api("/api/apps");
     apps = data.apps || [];
@@ -76,8 +146,12 @@
       if (fresh) {
         selected = fresh;
         syncMenuButtons();
+      } else {
+        hideDropdown();
+        selected = null;
       }
     }
+    reanchorDropdown();
   }
 
   function showModal(el) {
@@ -86,24 +160,7 @@
 
   function hideModal(el) {
     el.hidden = true;
-  }
-
-  function openMenu(id) {
-    const app = apps.find((a) => a.id === id);
-    if (!app) return;
-    selected = app;
-    document.getElementById("menu-title").textContent = app.name;
-    document.getElementById("menu-sub").textContent =
-      `端口 ${app.port} · ${stateLabel(app)}`;
-    document.getElementById("menu-icon").src = iconUrl(app.icon);
-    syncMenuButtons();
-    showModal(menuModal);
-  }
-
-  function stateLabel(app) {
-    if (app.state === "running") return "运行中";
-    if (app.state === "error") return "异常";
-    return "已停止";
+    if (el === statusModal) stopStatusPoll();
   }
 
   function syncMenuButtons() {
@@ -112,20 +169,27 @@
     const stopBtn = document.getElementById("act-stop");
     startBtn.disabled = !selected.can_start || busy;
     stopBtn.disabled = !selected.can_stop || busy;
-    menuModal.querySelector(".modal")?.classList.toggle("busy", busy);
+    dropdown.classList.toggle("busy", busy);
   }
+
+  dropdown.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
 
   document.getElementById("act-open").addEventListener("click", () => {
     if (!selected) return;
     window.open(openUrlFor(selected), "_blank", "noopener");
+    hideDropdown();
   });
 
   document.getElementById("act-start").addEventListener("click", async () => {
     if (!selected || busy) return;
+    const id = selected.id;
     busy = true;
     syncMenuButtons();
+    hideDropdown();
     try {
-      await api(`/api/apps/${selected.id}/start`, { method: "POST" });
+      await api(`/api/apps/${id}/start`, { method: "POST" });
       await refresh();
     } catch (e) {
       alert(`启动失败：${e.message}`);
@@ -138,10 +202,14 @@
 
   document.getElementById("act-stop").addEventListener("click", async () => {
     if (!selected || busy) return;
+    const app = selected;
+    const ok = window.confirm(`确定要停止「${app.name}」吗？`);
+    if (!ok) return;
     busy = true;
     syncMenuButtons();
+    hideDropdown();
     try {
-      await api(`/api/apps/${selected.id}/stop`, { method: "POST" });
+      await api(`/api/apps/${app.id}/stop`, { method: "POST" });
       await refresh();
     } catch (e) {
       alert(`停止失败：${e.message}`);
@@ -152,28 +220,84 @@
     }
   });
 
+  function applyStatusToApps(st) {
+    const i = apps.findIndex((a) => a.id === st.id);
+    if (i < 0) return;
+    apps[i] = {
+      ...apps[i],
+      state: st.state,
+      lamp: st.lamp,
+      message: st.message,
+      can_start: st.can_start,
+      can_stop: st.can_stop,
+    };
+    if (selected && selected.id === st.id) selected = apps[i];
+    renderGrid();
+  }
+
+  function formatStatusBody(st) {
+    const now = new Date();
+    const stamp = now.toLocaleTimeString("zh-CN", { hour12: false });
+    return [
+      `名称: ${st.name}`,
+      `端口: ${st.port}`,
+      `状态: ${st.state} (${st.lamp})`,
+      `摘要: ${st.message || ""}`,
+      `查询时间: ${stamp}`,
+      "",
+      st.detail || "",
+    ].join("\n");
+  }
+
+  function stopStatusPoll() {
+    if (statusPollTimer != null) {
+      clearInterval(statusPollTimer);
+      statusPollTimer = null;
+    }
+    statusAppId = null;
+  }
+
+  async function loadStatusDetail(appId, { silent = false } = {}) {
+    if (!silent) {
+      document.getElementById("status-body").textContent = "实时查询中…";
+    }
+    try {
+      const st = await api(`/api/apps/${appId}/status`);
+      if (statusAppId !== appId) return null;
+      applyStatusToApps(st);
+      document.getElementById("status-body").textContent = formatStatusBody(st);
+      return st;
+    } catch (e) {
+      if (statusAppId !== appId) return null;
+      document.getElementById("status-body").textContent = `获取失败：${e.message}`;
+      return null;
+    }
+  }
+
+  function startStatusPoll(appId) {
+    stopStatusPoll();
+    statusAppId = appId;
+    statusPollTimer = setInterval(() => {
+      if (statusModal.hidden || statusAppId !== appId) {
+        stopStatusPoll();
+        return;
+      }
+      loadStatusDetail(appId, { silent: true }).catch(() => {});
+    }, 3000);
+  }
+
   document.getElementById("act-status").addEventListener("click", async () => {
     if (!selected) return;
-    document.getElementById("status-title").textContent = `${selected.name} · 状态`;
-    document.getElementById("status-body").textContent = "加载中…";
+    const app = selected;
+    hideDropdown();
+    document.getElementById("status-title").textContent = `${app.name} · 状态`;
     showModal(statusModal);
-    try {
-      const st = await api(`/api/apps/${selected.id}/status`);
-      const lines = [
-        `名称: ${st.name}`,
-        `端口: ${st.port}`,
-        `状态: ${st.state} (${st.lamp})`,
-        `摘要: ${st.message || ""}`,
-        "",
-        st.detail || "",
-      ];
-      document.getElementById("status-body").textContent = lines.join("\n");
-    } catch (e) {
-      document.getElementById("status-body").textContent = `获取失败：${e.message}`;
-    }
+    startStatusPoll(app.id);
+    await loadStatusDetail(app.id);
   });
 
   document.getElementById("btn-settings").addEventListener("click", () => {
+    hideDropdown();
     draftOrder = apps.map((a) => a.id);
     renderOrderList();
     showModal(settingsModal);
@@ -236,11 +360,20 @@
     });
   });
 
+  document.addEventListener("click", () => {
+    hideDropdown();
+  });
+
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    [statusModal, settingsModal, menuModal].forEach((m) => {
+    hideDropdown();
+    [statusModal, settingsModal].forEach((m) => {
       if (!m.hidden) hideModal(m);
     });
+  });
+
+  window.addEventListener("resize", () => {
+    reanchorDropdown();
   });
 
   refresh().catch((e) => {
